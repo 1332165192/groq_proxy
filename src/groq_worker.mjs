@@ -99,65 +99,40 @@ const makeHeaders = (apiKey) => ({
   "Content-Type": "application/json"
 });
 
-const SUPPORTED_MODELS = [
-  {
-    id: "llama3-70b-8192",
-    name: "LLaMA 3 70B",
-    context_window: 8192,
-    owned_by: "Meta"
-  },
-  {
-    id: "mixtral-8x7b-32768",
-    name: "Mixtral 8x7B",
-    context_window: 32768,
-    owned_by: "Mistral AI"
-  },
-  {
-    id: "gemma-7b-it",
-    name: "Gemma 7B",
-    context_window: 8192,
-    owned_by: "Google"
-  },
-  {
-    id: "llama-3.1-70b-versatile",
-    name: "LLaMA 3.1 70B Versatile",
-    context_window: 32768,
-    owned_by: "Meta"
-  }
-];
-
+// 移除 SUPPORTED_MODELS 常量，因为我们将直接从 API 获取
 const DEFAULT_MODEL = "llama3-70b-8192";
 
 async function handleModels(apiKey) {
-  // 返回支持的模型列表
-  const models = SUPPORTED_MODELS.map(model => ({
-    id: model.id,
-    object: "model",
-    created: Date.now(),
-    owned_by: model.owned_by,
-    active: true,
-    context_window: model.context_window,
-    public_apps: null
-  }));
+  try {
+    // 直接从 Groq API 获取模型列表
+    const response = await fetch(`${BASE_URL}/models`, {
+      method: "GET",
+      headers: makeHeaders(apiKey)
+    });
 
-  return new Response(JSON.stringify({
-    object: "list",
-    data: models
-  }), fixCors({
-    status: 200,
-    headers: { 
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=3600"
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+      throw new HttpError(error.error?.message || "Failed to fetch models", response.status);
     }
-  }));
+
+    // 直接返回 API 响应
+    const data = await response.json();
+    return new Response(JSON.stringify(data), fixCors({
+      status: 200,
+      headers: { 
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=3600"
+      }
+    }));
+  } catch (error) {
+    console.error("Error fetching models:", error);
+    throw new HttpError(error.message || "Failed to fetch models", 500);
+  }
 }
 
 async function handleCompletions(req, apiKey) {
   const model = req.model || DEFAULT_MODEL;
-  if (!SUPPORTED_MODELS.some(m => m.id === model)) {
-    throw new HttpError(`Model ${model} not supported`, 400);
-  }
-
+  
   // 验证必需的请求参数
   if (!Array.isArray(req.messages) || req.messages.length === 0) {
     throw new HttpError("messages array is required", 400);
