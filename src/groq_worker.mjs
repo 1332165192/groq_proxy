@@ -101,35 +101,43 @@ const makeHeaders = (apiKey) => ({
 
 const SUPPORTED_MODELS = [
   {
-    id: "llama2-70b-4096",
-    name: "Llama 2 70B",
-    context_length: 4096,
+    id: "llama3-70b-8192",
+    name: "LLaMA 3 70B",
+    context_window: 8192,
+    owned_by: "Meta"
   },
   {
     id: "mixtral-8x7b-32768",
     name: "Mixtral 8x7B",
-    context_length: 32768,
+    context_window: 32768,
+    owned_by: "Mistral AI"
   },
   {
     id: "gemma-7b-it",
     name: "Gemma 7B",
-    context_length: 8192,
+    context_window: 8192,
+    owned_by: "Google"
+  },
+  {
+    id: "llama-3.1-70b-versatile",
+    name: "LLaMA 3.1 70B Versatile",
+    context_window: 32768,
+    owned_by: "Meta"
   }
 ];
 
-const DEFAULT_MODEL = "llama2-70b-4096";
+const DEFAULT_MODEL = "llama3-70b-8192";
 
 async function handleModels(apiKey) {
-  // 不需要实际调用 Groq API，直接返回支持的模型列表
+  // 返回支持的模型列表
   const models = SUPPORTED_MODELS.map(model => ({
     id: model.id,
     object: "model",
     created: Date.now(),
-    owned_by: "groq",
-    permission: [],
-    root: model.id,
-    parent: null,
-    context_length: model.context_length,
+    owned_by: model.owned_by,
+    active: true,
+    context_window: model.context_window,
+    public_apps: null
   }));
 
   return new Response(JSON.stringify({
@@ -139,7 +147,7 @@ async function handleModels(apiKey) {
     status: 200,
     headers: { 
       "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=3600" // 缓存1小时
+      "Cache-Control": "public, max-age=3600"
     }
   }));
 }
@@ -155,20 +163,38 @@ async function handleCompletions(req, apiKey) {
     throw new HttpError("messages array is required", 400);
   }
 
+  // 构建请求体，根据 Groq API 文档支持的参数
+  const requestBody = {
+    model,
+    messages: req.messages,
+    temperature: req.temperature ?? 0.7,
+    max_tokens: req.max_tokens,
+    stream: req.stream ?? false,
+    stop: req.stop,
+    top_p: req.top_p ?? 1,
+    frequency_penalty: req.frequency_penalty ?? 0,
+    presence_penalty: req.presence_penalty ?? 0,
+    // 新增支持的参数
+    max_completion_tokens: req.max_completion_tokens,
+    top_k: req.top_k,
+    seed: req.seed,
+    response_format: req.response_format,
+    tools: req.tools,
+    tool_choice: req.tool_choice,
+    user: req.user
+  };
+
+  // 移除未定义的参数
+  Object.keys(requestBody).forEach(key => {
+    if (requestBody[key] === undefined) {
+      delete requestBody[key];
+    }
+  });
+
   const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: makeHeaders(apiKey),
-    body: JSON.stringify({
-      model,
-      messages: req.messages,
-      temperature: req.temperature ?? 0.7,
-      max_tokens: req.max_tokens,
-      stream: req.stream ?? false,
-      stop: req.stop,
-      top_p: req.top_p ?? 1,
-      frequency_penalty: req.frequency_penalty ?? 0,
-      presence_penalty: req.presence_penalty ?? 0,
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
@@ -176,28 +202,34 @@ async function handleCompletions(req, apiKey) {
     throw new HttpError(error.error?.message || "API request failed", response.status);
   }
 
-  let body = response.body;
-  if (response.ok) {
-    if (req.stream) {
-      // 处理流式响应
-      return new Response(body, fixCors({
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-        },
-        status: 200
-      }));
-    } else {
-      // 处理非流式响应
-      const data = await response.json();
-      body = JSON.stringify(data);
-      return new Response(body, fixCors({
-        headers: { "Content-Type": "application/json" },
-        status: 200
-      }));
-    }
+  if (req.stream) {
+    // 处理流式响应
+    return new Response(response.body, fixCors({
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+      status: 200
+    }));
+  } else {
+    // 处理非流式响应
+    const data = await response.json();
+    return new Response(JSON.stringify(data), fixCors({
+      headers: { "Content-Type": "application/json" },
+      status: 200
+    }));
   }
+}
 
-  return new Response(body, fixCors(response));
-} 
+// 添加 OPTIONS 请求处理
+const handleOPTIONS = async () => {
+  return new Response(null, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Max-Age": "86400", // 24小时缓存预检请求结果
+    }
+  });
+}; 
