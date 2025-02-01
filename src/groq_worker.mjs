@@ -106,8 +106,12 @@ export default {
         }
       }
 
-      // API 路由处理
       if (pathname.startsWith("/openai/v1/")) {
+        return handleGroqRequest(request);
+      }
+
+      // API 路由处理
+      if (pathname.startsWith("/v1/")) {
         const apiPath = pathname.substring(3); // 移除 "/v1" 前缀
         
         const auth = request.headers.get("Authorization");
@@ -217,6 +221,7 @@ async function handleGroqRequest(request) {
   console.log("pathname:", pathname, "request url:",url.toString());
 
   url.host = BASE_URL;
+  console.log("url.toString():", url.toString());
 
   const newRequest = new Request(url.toString(), {
     headers: request.headers,
