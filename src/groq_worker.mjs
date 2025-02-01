@@ -59,6 +59,36 @@ export default {
         }
       }
 
+      if (pathname === "/audio") {
+        try {
+          const content = await Deno.readTextFile("./src/static/audio.html");
+          return new Response(content, {
+            headers: { 
+              "Content-Type": "text/html",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (error) {
+          console.error("Error reading audio.html:", error);
+          throw new HttpError("Failed to load audio.html", 500);
+        }
+      }
+
+      if (pathname === "/audio.js") {
+        try {
+          const content = await Deno.readTextFile("./src/static/audio.js");
+          return new Response(content, {
+            headers: { 
+              "Content-Type": "application/javascript",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (error) {
+          console.error("Error reading audio.js:", error);
+          throw new HttpError("Failed to load audio.js", 500);
+        }
+      }
+
       // API 路由处理
       if (pathname.startsWith("/v1/")) {
         const apiPath = pathname.substring(3); // 移除 "/v1" 前缀
