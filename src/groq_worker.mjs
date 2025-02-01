@@ -220,7 +220,7 @@ async function handleGroqRequest(request) {
   const { pathname } = url;
   console.log("pathname:", pathname, "request url:",url.toString());
 
-  url.host = BASE_URL;
+  url.host = "api.groq.com";
   console.log("url.toString():", url.toString());
 
   const newRequest = new Request(url.toString(), {
