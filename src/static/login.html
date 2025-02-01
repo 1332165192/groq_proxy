@@ -112,7 +112,7 @@
             
             try {
                 // 验证 API Key
-                const response = await fetch('/v1/models', {
+                const response = await fetch('${API_BASE_URL}/models', {
                     headers: {
                         'Authorization': `Bearer ${apiKey}`
                     }
