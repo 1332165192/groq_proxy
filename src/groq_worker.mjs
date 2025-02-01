@@ -10,33 +10,50 @@ export default {
       return new Response(err.message, fixCors({ status: err.status ?? 500 }));
     };
     try {
-      const auth = request.headers.get("Authorization");
-      const apiKey = auth?.split(" ")[1];
-      if (!apiKey) {
-        throw new HttpError("Missing API key", 401);
-      }
-
       const url = new URL(request.url);
       const { pathname } = url;
 
       // 处理静态文件
       if (pathname === "/" || pathname === "/index.html") {
-        return new Response(await Deno.readFile("./src/static/index.html"), {
-          headers: { "Content-Type": "text/html" },
-        });
+        try {
+          const content = await Deno.readTextFile("./src/static/index.html");
+          return new Response(content, {
+            headers: { 
+              "Content-Type": "text/html",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (error) {
+          console.error("Error reading index.html:", error);
+          throw new HttpError("Failed to load index.html", 500);
+        }
       }
       
       if (pathname === "/groq.js") {
-        return new Response(await Deno.readFile("./src/static/groq.js"), {
-          headers: { "Content-Type": "application/javascript" },
-        });
+        try {
+          const content = await Deno.readTextFile("./src/static/groq.js");
+          return new Response(content, {
+            headers: { 
+              "Content-Type": "application/javascript",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (error) {
+          console.error("Error reading groq.js:", error);
+          throw new HttpError("Failed to load groq.js", 500);
+        }
       }
 
       // API 路由处理
       if (pathname.startsWith("/v1/")) {
         const apiPath = pathname.substring(3); // 移除 "/v1" 前缀
         
-        // 简化路由逻辑，移除 assert 检查
+        const auth = request.headers.get("Authorization");
+        const apiKey = auth?.split(" ")[1];
+        if (!apiKey) {
+          throw new HttpError("Missing API key", 401);
+        }
+
         if (apiPath.endsWith("/chat/completions")) {
           if (request.method !== "POST") {
             throw new HttpError("Method not allowed", 405);
