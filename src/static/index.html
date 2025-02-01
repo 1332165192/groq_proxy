@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Groq Chat Interface</title>
+    <title>GROQ Chat Interface</title>
     <style>
         :root {
             --primary-color: #2196F3;
@@ -152,6 +152,31 @@
             background-color: #bdbdbd;
             cursor: not-allowed;
         }
+
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .audio-btn {
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .audio-btn:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+        }
+        
+        .audio-btn:hover:not(:disabled) {
+            background-color: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +200,34 @@
                 <div class="settings-item">
                     <label for="max-tokens">Max Tokens:</label>
                     <input type="number" id="max-tokens" value="1000" min="1" max="4096">
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-item">
+                    <label>Audio Functions:</label>
+                    <div class="audio-controls">
+                        <button id="start-recording" class="audio-btn">Start Recording</button>
+                        <button id="stop-recording" class="audio-btn" disabled>Stop Recording</button>
+                        <input type="file" id="audio-file" accept="audio/*" style="display: none;">
+                        <button id="upload-audio" class="audio-btn">Upload Audio</button>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <label for="audio-language">Language:</label>
+                    <select id="audio-language">
+                        <option value="">Auto Detect</option>
+                        <option value="en">English</option>
+                        <option value="zh">Chinese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                    </select>
+                </div>
+                <div class="settings-item">
+                    <label for="audio-mode">Mode:</label>
+                    <select id="audio-mode">
+                        <option value="transcribe">Transcribe</option>
+                        <option value="translate">Translate to English</option>
+                    </select>
                 </div>
             </div>
         </div>
