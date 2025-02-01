@@ -12,6 +12,8 @@ export default {
     try {
       const url = new URL(request.url);
       const { pathname } = url;
+      
+      console.log("pathname:", pathname, "request url:", request.url);
 
       // 处理静态文件
       if (pathname === "/" || pathname === "/login") {
