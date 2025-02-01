@@ -14,7 +14,22 @@ export default {
       const { pathname } = url;
 
       // 处理静态文件
-      if (pathname === "/" || pathname === "/index.html") {
+      if (pathname === "/" || pathname === "/login") {
+        try {
+          const content = await Deno.readTextFile("./src/static/login.html");
+          return new Response(content, {
+            headers: { 
+              "Content-Type": "text/html",
+              "Access-Control-Allow-Origin": "*"
+            }
+          });
+        } catch (error) {
+          console.error("Error reading login.html:", error);
+          throw new HttpError("Failed to load login.html", 500);
+        }
+      }
+
+      if (pathname === "/index.html") {
         try {
           const content = await Deno.readTextFile("./src/static/index.html");
           return new Response(content, {

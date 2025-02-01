@@ -2,8 +2,12 @@ const API_BASE_URL = '/v1'; // 代理服务器的基础URL
 
 class GroqChat {
   constructor() {
-    this.apiKey = localStorage.getItem('groq_api_key') || '';
-    this.currentModel = 'llama2-70b-4096';
+    this.apiKey = localStorage.getItem('groq_api_key');
+    if (!this.apiKey) {
+        window.location.href = '/login';
+        return;
+    }
+    this.currentModel = 'llama3-70b-8192';
     this.messageHistory = [];
     this.initializeUI();
   }
@@ -38,8 +42,28 @@ class GroqChat {
   }
 
   updateApiKey() {
-    this.apiKey = this.apiKeyInput.value.trim();
-    localStorage.setItem('groq_api_key', this.apiKey);
+    const newApiKey = this.apiKeyInput.value.trim();
+    if (newApiKey !== this.apiKey) {
+        // 验证新的 API Key
+        fetch(`${API_BASE_URL}/models`, {
+            headers: {
+                'Authorization': `Bearer ${newApiKey}`
+            }
+        }).then(response => {
+            if (response.ok) {
+                this.apiKey = newApiKey;
+                localStorage.setItem('groq_api_key', this.apiKey);
+                this.loadModels(); // 重新加载模型列表
+            } else {
+                alert('Invalid API key');
+                this.apiKeyInput.value = this.apiKey; // 恢复原来的 API Key
+            }
+        }).catch(error => {
+            console.error('Error validating API key:', error);
+            alert('Error validating API key');
+            this.apiKeyInput.value = this.apiKey;
+        });
+    }
   }
 
   async loadModels() {
