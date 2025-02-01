@@ -49,7 +49,7 @@ class AudioProcessor {
             }
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream, { mimeType: supportedType });
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
             this.audioChunks = [];
 
             this.mediaRecorder.addEventListener('dataavailable', (event) => {
