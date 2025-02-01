@@ -42,8 +42,7 @@ class AudioProcessor {
             ];
             
             // 找到浏览器支持的第一个格式
-           // const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-            const supportedType = "mp3";
+            const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
             
             if (!supportedType) {
                 throw new Error('No supported audio format found. Please try uploading a file instead.');
