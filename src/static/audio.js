@@ -1,4 +1,4 @@
-const API_BASE_URL = '/v1';
+const API_BASE_URL = '/openai/v1';
 
 class AudioProcessor {
     constructor() {

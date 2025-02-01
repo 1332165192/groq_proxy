@@ -1,4 +1,4 @@
-const API_BASE_URL = '/v1'; // 代理服务器的基础URL
+const API_BASE_URL = '/openai/v1'; // 代理服务器的基础URL
 
 class GroqChat {
   constructor() {

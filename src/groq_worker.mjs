@@ -12,7 +12,7 @@ export default {
     try {
       const url = new URL(request.url);
       const { pathname } = url;
-      
+
       console.log("pathname:", pathname, "request url:", request.url);
 
       // 处理静态文件
@@ -92,7 +92,7 @@ export default {
       }
 
       // API 路由处理
-      if (pathname.startsWith("/v1/")) {
+      if (pathname.startsWith("/openai/v1/")) {
         const apiPath = pathname.substring(3); // 移除 "/v1" 前缀
         
         const auth = request.headers.get("Authorization");
@@ -100,6 +100,8 @@ export default {
         if (!apiKey) {
           throw new HttpError("Missing API key", 401);
         }
+
+        return handleGroqRequest(request);
 
         if (apiPath.endsWith("/chat/completions")) {
           if (request.method !== "POST") {
@@ -191,6 +193,23 @@ async function handleModels(apiKey) {
     console.error("Error fetching models:", error);
     throw new HttpError(error.message || "Failed to fetch models", 500);
   }
+}
+
+//处理groq所有请求
+async function handleGroqRequest(request) {
+  const url = new URL(request.url);
+  const { pathname } = url;
+  console.log("pathname:", pathname, "request url:",url.toString());
+
+  url.host = BASE_URL;
+
+  const newRequest = new Request(url.toString(), {
+    headers: request.headers,
+    method: request.method,
+    body: request.body,
+    redirect: "follow",
+  });
+  return await fetch(newRequest);
 }
 
 async function handleCompletions(req, apiKey) {
