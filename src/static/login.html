@@ -103,8 +103,11 @@
         <div id="error-message" class="error-message"></div>
     </div>
 
-    <script type="module" src="constant.js"></script>
-    <script>
+    <script type="module">
+        // 引入常量
+        import { API_BASE_URL } from './constant.js';
+        console.log("API_BASE_URL:", API_BASE_URL);
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const apiKey = document.getElementById('api-key').value.trim();
