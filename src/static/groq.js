@@ -50,16 +50,44 @@ class GroqChat {
         }
       });
       
-      if (!response.ok) throw new Error('Failed to load models');
+      if (!response.ok) {
+        throw new Error(`Failed to load models: ${response.statusText}`);
+      }
       
       const { data } = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('No models available');
+      }
+
+      // 更新模型选择下拉框
       this.modelSelect.innerHTML = data.map(model => 
-        `<option value="${model.id}">${model.id}</option>`
+        `<option value="${model.id}" data-context-length="${model.context_length}">
+          ${model.id} (${model.context_length} tokens)
+        </option>`
       ).join('');
       
-      this.modelSelect.value = this.currentModel;
+      // 设置默认模型
+      const defaultModel = data.find(m => m.id === this.currentModel) || data[0];
+      this.modelSelect.value = defaultModel.id;
+      
+      // 更新最大令牌数限制
+      this.updateMaxTokensLimit();
+      
+      // 添加模型切换事件监听
+      this.modelSelect.addEventListener('change', () => this.updateMaxTokensLimit());
     } catch (error) {
       console.error('Error loading models:', error);
+      // 显示错误信息到UI
+      this.addErrorToUI(`Failed to load models: ${error.message}`);
+    }
+  }
+
+  updateMaxTokensLimit() {
+    const selectedOption = this.modelSelect.selectedOptions[0];
+    if (selectedOption) {
+      const contextLength = parseInt(selectedOption.dataset.contextLength) || 4096;
+      this.maxTokensInput.max = contextLength;
+      this.maxTokensInput.value = Math.min(parseInt(this.maxTokensInput.value), contextLength);
     }
   }
 

@@ -92,16 +92,6 @@ const fixCors = ({ headers, status, statusText }) => {
   return { headers, status, statusText };
 };
 
-const handleOPTIONS = async () => {
-  return new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    }
-  });
-};
-
 const BASE_URL = "https://api.groq.com/openai/v1";
 
 const makeHeaders = (apiKey) => ({
@@ -110,19 +100,36 @@ const makeHeaders = (apiKey) => ({
 });
 
 const SUPPORTED_MODELS = [
-  "llama2-70b-4096",
-  "mixtral-8x7b-32768",
-  "gemma-7b-it"
+  {
+    id: "llama2-70b-4096",
+    name: "Llama 2 70B",
+    context_length: 4096,
+  },
+  {
+    id: "mixtral-8x7b-32768",
+    name: "Mixtral 8x7B",
+    context_length: 32768,
+  },
+  {
+    id: "gemma-7b-it",
+    name: "Gemma 7B",
+    context_length: 8192,
+  }
 ];
 
 const DEFAULT_MODEL = "llama2-70b-4096";
 
 async function handleModels(apiKey) {
-  const models = SUPPORTED_MODELS.map(id => ({
-    id,
+  // 不需要实际调用 Groq API，直接返回支持的模型列表
+  const models = SUPPORTED_MODELS.map(model => ({
+    id: model.id,
     object: "model",
     created: Date.now(),
     owned_by: "groq",
+    permission: [],
+    root: model.id,
+    parent: null,
+    context_length: model.context_length,
   }));
 
   return new Response(JSON.stringify({
@@ -130,13 +137,16 @@ async function handleModels(apiKey) {
     data: models
   }), fixCors({
     status: 200,
-    headers: { "Content-Type": "application/json" }
+    headers: { 
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600" // 缓存1小时
+    }
   }));
 }
 
 async function handleCompletions(req, apiKey) {
   const model = req.model || DEFAULT_MODEL;
-  if (!SUPPORTED_MODELS.includes(model)) {
+  if (!SUPPORTED_MODELS.some(m => m.id === model)) {
     throw new HttpError(`Model ${model} not supported`, 400);
   }
 
