@@ -12,24 +12,30 @@ export default {
     try {
       const auth = request.headers.get("Authorization");
       const apiKey = auth?.split(" ")[1];
-      const assert = (success) => {
-        if (!success) {
-          throw new HttpError("The specified HTTP method is not allowed for the requested resource", 400);
-        }
-      };
-      const { pathname } = new URL(request.url);
-      switch (true) {
-        case pathname.endsWith("/chat/completions"):
-          assert(request.method === "POST");
-          return handleCompletions(await request.json(), apiKey)
-            .catch(errHandler);
-        case pathname.endsWith("/models"):
-          assert(request.method === "GET");
-          return handleModels(apiKey)
-            .catch(errHandler);
-        default:
-          throw new HttpError("404 Not Found", 404);
+      if (!apiKey) {
+        throw new HttpError("Missing API key", 401);
       }
+
+      const { pathname } = new URL(request.url);
+      
+      // 简化路由逻辑，移除 assert 检查
+      if (pathname.endsWith("/chat/completions")) {
+        if (request.method !== "POST") {
+          throw new HttpError("Method not allowed", 405);
+        }
+        return handleCompletions(await request.json(), apiKey)
+          .catch(errHandler);
+      }
+      
+      if (pathname.endsWith("/models")) {
+        if (request.method !== "GET") {
+          throw new HttpError("Method not allowed", 405);
+        }
+        return handleModels(apiKey)
+          .catch(errHandler);
+      }
+
+      throw new HttpError("404 Not Found", 404);
     } catch (err) {
       return errHandler(err);
     }
@@ -54,8 +60,8 @@ const handleOPTIONS = async () => {
   return new Response(null, {
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "*",
-      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
     }
   });
 };
@@ -67,13 +73,13 @@ const makeHeaders = (apiKey) => ({
   "Content-Type": "application/json"
 });
 
-// 支持的模型列表
 const SUPPORTED_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama-3.3-8b-versatile",
+  "llama2-70b-4096",
   "mixtral-8x7b-32768",
   "gemma-7b-it"
 ];
+
+const DEFAULT_MODEL = "llama2-70b-4096";
 
 async function handleModels(apiKey) {
   const models = SUPPORTED_MODELS.map(id => ({
@@ -92,12 +98,15 @@ async function handleModels(apiKey) {
   }));
 }
 
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
-
 async function handleCompletions(req, apiKey) {
   const model = req.model || DEFAULT_MODEL;
   if (!SUPPORTED_MODELS.includes(model)) {
     throw new HttpError(`Model ${model} not supported`, 400);
+  }
+
+  // 验证必需的请求参数
+  if (!Array.isArray(req.messages) || req.messages.length === 0) {
+    throw new HttpError("messages array is required", 400);
   }
 
   const response = await fetch(`${BASE_URL}/chat/completions`, {
@@ -106,25 +115,41 @@ async function handleCompletions(req, apiKey) {
     body: JSON.stringify({
       model,
       messages: req.messages,
-      temperature: req.temperature,
+      temperature: req.temperature ?? 0.7,
       max_tokens: req.max_tokens,
-      stream: req.stream,
+      stream: req.stream ?? false,
       stop: req.stop,
-      top_p: req.top_p,
-      frequency_penalty: req.frequency_penalty,
-      presence_penalty: req.presence_penalty,
+      top_p: req.top_p ?? 1,
+      frequency_penalty: req.frequency_penalty ?? 0,
+      presence_penalty: req.presence_penalty ?? 0,
     })
   });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+    throw new HttpError(error.error?.message || "API request failed", response.status);
+  }
 
   let body = response.body;
   if (response.ok) {
     if (req.stream) {
-      // 直接转发流式响应
-      body = response.body;
+      // 处理流式响应
+      return new Response(body, fixCors({
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+        status: 200
+      }));
     } else {
-      // 非流式响应
+      // 处理非流式响应
       const data = await response.json();
       body = JSON.stringify(data);
+      return new Response(body, fixCors({
+        headers: { "Content-Type": "application/json" },
+        status: 200
+      }));
     }
   }
 
