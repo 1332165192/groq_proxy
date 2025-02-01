@@ -1,4 +1,5 @@
-const API_BASE_URL = '/openai/v1';
+// const API_BASE_URL = '/openai/v1';
+import { API_BASE_URL } from './constant.js';
 
 class AudioProcessor {
     constructor() {

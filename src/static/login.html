@@ -103,6 +103,7 @@
         <div id="error-message" class="error-message"></div>
     </div>
 
+    <script src="./constant.js"></script>
     <script>
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -133,7 +134,7 @@
         // 如果已经有有效的 API Key，直接跳转
         const existingApiKey = localStorage.getItem('groq_api_key');
         if (existingApiKey) {
-            fetch('/v1/models', {
+            fetch('${API_BASE_URL}/models', {
                 headers: {
                     'Authorization': `Bearer ${existingApiKey}`
                 }

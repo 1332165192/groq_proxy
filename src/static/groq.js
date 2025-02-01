@@ -1,4 +1,5 @@
-const API_BASE_URL = '/openai/v1'; // 代理服务器的基础URL
+// const API_BASE_URL = '/openai/v1'; // 代理服务器的基础URL
+import { API_BASE_URL } from './constant.js';
 
 class GroqChat {
   constructor() {
