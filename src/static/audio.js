@@ -34,7 +34,9 @@ class AudioProcessor {
     async startRecording() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
+            this.mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm' // 使用 WebM 格式，这是最广泛支持的格式
+            });
             this.audioChunks = [];
 
             this.mediaRecorder.addEventListener('dataavailable', (event) => {
@@ -71,6 +73,15 @@ class AudioProcessor {
     }
 
     async processAudioBlob(blob) {
+        // 验证文件格式
+        const validFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'opus', 'wav', 'webm'];
+        const fileType = blob.type.split('/')[1];
+        
+        if (!validFormats.includes(fileType)) {
+            this.showError(`Invalid file format. Supported formats: ${validFormats.join(', ')}`);
+            return;
+        }
+        
         const formData = new FormData();
         formData.append('file', blob);
         formData.append('model', 'whisper-large-v3');
@@ -93,7 +104,8 @@ class AudioProcessor {
             });
 
             if (!response.ok) {
-                throw new Error(`Audio processing failed: ${response.statusText}`);
+                const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
+                throw new Error(error.error?.message || `Audio processing failed: ${response.statusText}`);
             }
 
             const result = await response.json();
