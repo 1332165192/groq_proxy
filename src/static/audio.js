@@ -33,10 +33,23 @@ class AudioProcessor {
 
     async startRecording() {
         try {
+            // 检查支持的录音格式
+            const mimeTypes = [
+                'audio/webm',
+                'audio/mp4',
+                'audio/ogg',
+                'audio/wav'
+            ];
+            
+            // 找到浏览器支持的第一个格式
+            const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+            
+            if (!supportedType) {
+                throw new Error('No supported audio format found. Please try uploading a file instead.');
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm' // 使用 WebM 格式，这是最广泛支持的格式
-            });
+            this.mediaRecorder = new MediaRecorder(stream, { mimeType: supportedType });
             this.audioChunks = [];
 
             this.mediaRecorder.addEventListener('dataavailable', (event) => {
@@ -44,16 +57,17 @@ class AudioProcessor {
             });
 
             this.mediaRecorder.addEventListener('stop', () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                const audioBlob = new Blob(this.audioChunks, { type: supportedType });
                 this.processAudioBlob(audioBlob);
             });
 
-            this.mediaRecorder.start();
+            // 每秒记录一次数据，以确保更好的兼容性
+            this.mediaRecorder.start(1000);
             this.startRecordButton.disabled = true;
             this.stopRecordButton.disabled = false;
         } catch (error) {
             console.error('Error starting recording:', error);
-            this.showError('Failed to start recording. Please check your microphone permissions.');
+            this.showError(error.message || 'Failed to start recording. Please check your microphone permissions.');
         }
     }
 
@@ -74,11 +88,21 @@ class AudioProcessor {
 
     async processAudioBlob(blob) {
         // 验证文件格式
-        const validFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'opus', 'wav', 'webm'];
-        const fileType = blob.type.split('/')[1];
+        const validFormats = {
+            'audio/flac': 'flac',
+            'audio/mp3': 'mp3',
+            'audio/mp4': 'mp4',
+            'audio/mpeg': 'mpeg',
+            'audio/mpga': 'mpga',
+            'audio/m4a': 'm4a',
+            'audio/ogg': 'ogg',
+            'audio/opus': 'opus',
+            'audio/wav': 'wav',
+            'audio/webm': 'webm'
+        };
         
-        if (!validFormats.includes(fileType)) {
-            this.showError(`Invalid file format. Supported formats: ${validFormats.join(', ')}`);
+        if (!validFormats[blob.type]) {
+            this.showError(`Invalid file format. Supported formats: ${Object.values(validFormats).join(', ')}`);
             return;
         }
         
