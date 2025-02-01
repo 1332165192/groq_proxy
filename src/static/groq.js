@@ -14,11 +14,6 @@ class GroqChat {
   }
 
   initializeUI() {
-    // API Key 相关元素
-    this.apiKeyInput = document.getElementById('api-key');
-    this.apiKeyInput.value = this.apiKey;
-    this.apiKeyInput.addEventListener('change', () => this.updateApiKey());
-
     // 模型选择相关元素
     this.modelSelect = document.getElementById('model-select');
     this.loadModels();
@@ -59,31 +54,6 @@ class GroqChat {
     this.stopRecordButton.addEventListener('click', () => this.stopRecording());
     this.uploadButton.addEventListener('click', () => this.audioFileInput.click());
     this.audioFileInput.addEventListener('change', (e) => this.handleAudioFile(e.target.files[0]));
-  }
-
-  updateApiKey() {
-    const newApiKey = this.apiKeyInput.value.trim();
-    if (newApiKey !== this.apiKey) {
-        // 验证新的 API Key
-        fetch(`${API_BASE_URL}/models`, {
-            headers: {
-                'Authorization': `Bearer ${newApiKey}`
-            }
-        }).then(response => {
-            if (response.ok) {
-                this.apiKey = newApiKey;
-                localStorage.setItem('groq_api_key', this.apiKey);
-                this.loadModels(); // 重新加载模型列表
-            } else {
-                alert('Invalid API key');
-                this.apiKeyInput.value = this.apiKey; // 恢复原来的 API Key
-            }
-        }).catch(error => {
-            console.error('Error validating API key:', error);
-            alert('Error validating API key');
-            this.apiKeyInput.value = this.apiKey;
-        });
-    }
   }
 
   async loadModels() {

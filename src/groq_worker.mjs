@@ -84,6 +84,22 @@ export default {
           return handleModels(apiKey)
             .catch(errHandler);
         }
+
+        // 添加音频转写路由
+        if (apiPath.endsWith("/audio/transcriptions")) {
+          if (request.method !== "POST") {
+            throw new HttpError("Method not allowed", 405);
+          }
+          return handleAudioTranscription(request, apiKey).catch(errHandler);
+        }
+
+        // 添加音频翻译路由
+        if (apiPath.endsWith("/audio/translations")) {
+          if (request.method !== "POST") {
+            throw new HttpError("Method not allowed", 405);
+          }
+          return handleAudioTranslation(request, apiKey).catch(errHandler);
+        }
       }
 
       throw new HttpError("404 Not Found", 404);
@@ -222,4 +238,137 @@ const handleOPTIONS = async () => {
       "Access-Control-Max-Age": "86400", // 24小时缓存预检请求结果
     }
   });
-}; 
+};
+
+// 添加音频处理函数
+async function handleAudioTranscription(request, apiKey) {
+  try {
+    const formData = await request.formData();
+    const audioFile = formData.get("file");
+    if (!audioFile) {
+      throw new HttpError("Audio file is required", 400);
+    }
+
+    // 验证文件格式
+    const validFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'];
+    const fileType = audioFile.type.split('/')[1];
+    if (!validFormats.includes(fileType)) {
+      throw new HttpError(`Invalid file format. Supported formats: ${validFormats.join(', ')}`, 400);
+    }
+
+    // 构建请求参数
+    const groqFormData = new FormData();
+    groqFormData.append("file", audioFile);
+    groqFormData.append("model", "whisper-large-v3"); // 目前只支持这个模型
+
+    // 可选参数
+    const optionalParams = {
+      language: formData.get("language"),
+      prompt: formData.get("prompt"),
+      response_format: formData.get("response_format") || "json",
+      temperature: formData.get("temperature"),
+      timestamp_granularities: formData.getAll("timestamp_granularities")
+    };
+
+    // 添加可选参数
+    Object.entries(optionalParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(v => groqFormData.append(key, v));
+        } else {
+          groqFormData.append(key, value);
+        }
+      }
+    });
+
+    // 发送请求到 Groq API
+    const response = await fetch(`${BASE_URL}/audio/transcriptions`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        // 不要设置 Content-Type，让浏览器自动设置正确的 boundary
+      },
+      body: groqFormData
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+      throw new HttpError(error.error?.message || "Transcription failed", response.status);
+    }
+
+    const data = await response.json();
+    return new Response(JSON.stringify(data), fixCors({
+      status: 200,
+      headers: { 
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache"
+      }
+    }));
+  } catch (error) {
+    console.error("Transcription error:", error);
+    throw error;
+  }
+}
+
+async function handleAudioTranslation(request, apiKey) {
+  try {
+    const formData = await request.formData();
+    const audioFile = formData.get("file");
+    if (!audioFile) {
+      throw new HttpError("Audio file is required", 400);
+    }
+
+    // 验证文件格式
+    const validFormats = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'];
+    const fileType = audioFile.type.split('/')[1];
+    if (!validFormats.includes(fileType)) {
+      throw new HttpError(`Invalid file format. Supported formats: ${validFormats.join(', ')}`, 400);
+    }
+
+    // 构建请求参数
+    const groqFormData = new FormData();
+    groqFormData.append("file", audioFile);
+    groqFormData.append("model", "whisper-large-v3"); // 目前只支持这个模型
+
+    // 可选参数
+    const optionalParams = {
+      prompt: formData.get("prompt"),
+      response_format: formData.get("response_format") || "json",
+      temperature: formData.get("temperature")
+    };
+
+    // 添加可选参数
+    Object.entries(optionalParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        groqFormData.append(key, value);
+      }
+    });
+
+    // 发送请求到 Groq API
+    const response = await fetch(`${BASE_URL}/audio/translations`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        // 不要设置 Content-Type，让浏览器自动设置正确的 boundary
+      },
+      body: groqFormData
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+      throw new HttpError(error.error?.message || "Translation failed", response.status);
+    }
+
+    const data = await response.json();
+    return new Response(JSON.stringify(data), fixCors({
+      status: 200,
+      headers: { 
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache"
+      }
+    }));
+  } catch (error) {
+    console.error("Translation error:", error);
+    throw error;
+  }
+} 
