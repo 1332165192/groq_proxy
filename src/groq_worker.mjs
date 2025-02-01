@@ -16,23 +16,42 @@ export default {
         throw new HttpError("Missing API key", 401);
       }
 
-      const { pathname } = new URL(request.url);
-      
-      // 简化路由逻辑，移除 assert 检查
-      if (pathname.endsWith("/chat/completions")) {
-        if (request.method !== "POST") {
-          throw new HttpError("Method not allowed", 405);
-        }
-        return handleCompletions(await request.json(), apiKey)
-          .catch(errHandler);
+      const url = new URL(request.url);
+      const { pathname } = url;
+
+      // 处理静态文件
+      if (pathname === "/" || pathname === "/index.html") {
+        return new Response(await Deno.readFile("./src/static/index.html"), {
+          headers: { "Content-Type": "text/html" },
+        });
       }
       
-      if (pathname.endsWith("/models")) {
-        if (request.method !== "GET") {
-          throw new HttpError("Method not allowed", 405);
+      if (pathname === "/groq.js") {
+        return new Response(await Deno.readFile("./src/static/groq.js"), {
+          headers: { "Content-Type": "application/javascript" },
+        });
+      }
+
+      // API 路由处理
+      if (pathname.startsWith("/v1/")) {
+        const apiPath = pathname.substring(3); // 移除 "/v1" 前缀
+        
+        // 简化路由逻辑，移除 assert 检查
+        if (apiPath.endsWith("/chat/completions")) {
+          if (request.method !== "POST") {
+            throw new HttpError("Method not allowed", 405);
+          }
+          return handleCompletions(await request.json(), apiKey)
+            .catch(errHandler);
         }
-        return handleModels(apiKey)
-          .catch(errHandler);
+        
+        if (apiPath.endsWith("/models")) {
+          if (request.method !== "GET") {
+            throw new HttpError("Method not allowed", 405);
+          }
+          return handleModels(apiKey)
+            .catch(errHandler);
+        }
       }
 
       throw new HttpError("404 Not Found", 404);
