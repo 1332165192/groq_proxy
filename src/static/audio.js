@@ -14,7 +14,7 @@ class AudioProcessor {
     initializeUI() {
         this.mediaRecorder = null;
         this.audioChunks = [];
-        
+
         // 获取音频相关元素
         this.startRecordButton = document.getElementById('start-recording');
         this.stopRecordButton = document.getElementById('stop-recording');
@@ -41,10 +41,10 @@ class AudioProcessor {
                 'audio/ogg',
                 'audio/wav'
             ];
-            
+
             // 找到浏览器支持的第一个格式
             const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-            
+
             if (!supportedType) {
                 throw new Error('No supported audio format found. Please try uploading a file instead.');
             }
@@ -101,23 +101,23 @@ class AudioProcessor {
             'audio/wav': 'wav',
             'audio/webm': 'webm'
         };
-        
+
         if (!validFormats[blob.type]) {
             this.showError(`Invalid file format. Supported formats: ${Object.values(validFormats).join(', ')}`);
             return;
         }
-        
+
         const formData = new FormData();
         formData.append('file', blob);
         formData.append('model', 'whisper-large-v3');
-        
+
         const language = this.audioLanguageSelect.value;
         if (language) {
             formData.append('language', language);
         }
 
         const isTranslate = this.audioModeSelect.value === 'translate';
-        const endpoint = isTranslate ? '/v1/audio/translations' : '/v1/audio/transcriptions';
+        const endpoint = isTranslate ? API_BASE_URL + '/audio/translations' : API_BASE_URL + '/audio/transcriptions';
 
         try {
             const response = await fetch(endpoint, {
