@@ -76,8 +76,8 @@ class GroqChat {
 
       // 更新模型选择下拉框
       this.modelSelect.innerHTML = data.map(model => 
-        `<option value="${model.id}" data-context-length="${model.context_length}">
-          ${model.id} (${model.context_length} tokens)
+        `<option value="${model.id}" data-context-length="${model.context_window}">
+          ${model.id} (${model.context_window} tokens)
         </option>`
       ).join('');
       
